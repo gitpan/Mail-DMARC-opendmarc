@@ -1,0 +1,13 @@
+Revision history for Perl extension Mail::DMARC::opendmarc.
+
+0.01  Sat Oct  6 16:20:59 2012
+	- original version; created by h2xs 1.23 with options
+		-AO -x -g -n Mail::DMARC::opendmarc opendmarc/extinc/dmarc.h -L~/local/lib -lopendmarc
+
+0.04  Wed Oct 10 23:10:01 2012
+	- whew. Almost there.
+
+
+0.04_02  Sun Oct 14 15:02:30 2012
+	- nasty object reuse issue cleared
+	- INSTALL, README and pod start making some sense

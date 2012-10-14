@@ -1,0 +1,17 @@
+Changes
+Makefile.PL
+MANIFEST
+opendmarc.h
+const-c.inc
+const-xs.inc
+opendmarc.xs
+ppport.h
+typemap
+README
+INSTALL
+t/Mail-DMARC-opendmarc.t
+lib/Mail/DMARC/opendmarc.pm
+lib/Mail/DMARC/opendmarc/Constants/C/ForwardDecls.pm
+lib/Mail/DMARC/opendmarc/Constants/C/Symbols.pm
+META.yml                                 Module YAML meta-data (added by MakeMaker)
+META.json                                Module JSON meta-data (added by MakeMaker)
