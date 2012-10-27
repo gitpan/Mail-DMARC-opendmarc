@@ -1,8 +1,9 @@
-Mail-DMARC-opendmarc version 0.04
+Mail-DMARC-opendmarc version 0.06
 =================================
 
-WARNING - Experimental code
-Use with caution.
+CAVEAT EMPTOR - Experimental code
+	No production use track record.
+	Use with caution.
 
 This module provides a wrapper to Trusted Domain Project's libopendmarc
 library. Its primary use is expected to be together the Mail::DMARC
@@ -10,7 +11,7 @@ module, but it can conceivably used standalone, if you really are
 determined to do it.
 The wrapper is rather thin.
 
-Intended to become part of a slightly larger project providing DMARC support
+Intended to (hopefully) become part of a slightly larger project providing DMARC support
 for spamassasin.
 
 Please refer to www.dmarc.org if you don't know what DMARC is,
@@ -26,7 +27,7 @@ To install this module type the following:
    make test
    make install
 
-BUT, please read the INSTALL file as you might need to do 
+BUT, *please* read the INSTALL file as you might need to do 
 something else besides the standard steps outlined above.
 
 DEPENDENCIES

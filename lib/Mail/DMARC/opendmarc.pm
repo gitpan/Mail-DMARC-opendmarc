@@ -6,7 +6,7 @@ use warnings;
 use Carp;
 #use Switch;
 
-our $VERSION = '0.04_02';
+our $VERSION = '0.06';
 our $DEBUG = 0;
 
 require Exporter;
@@ -103,19 +103,19 @@ Mail::DMARC::opendmarc - Perl extension wrapping OpenDMARC's libopendmarc librar
   #		'human_policy' 
 
   print "DMARC check result: " . $result->{human_policy} . "\n";
+  
+  # Diagnostic output of internal libopendmarc structure via this handy function:
+  print $dmarc->dump_policy() if ($debug);
+  
   if ($result->{policy} == Mail::DMARC::opendmarc::DMARC_POLICY_PASS)
 		...
 
 =head1 DESCRIPTION
 
 A very thin layer wrapping Trusted Domain Project's libopendmarc.
-Please refer to http://www.trusteddomain.org/opendmarc.html
+Please refer to http://www.trusteddomain.org/opendmarc.html for more information on opendmarc
 
-=head2 new()
-
-my $d = Mail::DMARC::opendmarc-new();
-
-my $d = Mail::DMARC::opendmarc-new(C<ipaddr>);
+Look into the test suite for more usage examples.
 
 =cut
 
@@ -163,8 +163,7 @@ sub policy_t {
 
 sub dump_policy {
 	my $self = shift;
-	Mail::DMARC::opendmarc::dump_dmarc_policy_t($self->policy_t);
-	return $self->policy_t;
+	return Mail::DMARC::opendmarc::opendmarc_policy_to_buf($self->policy_t);
 }
 
 sub query {
@@ -401,16 +400,9 @@ __END__
 
 =head1 SEE ALSO
 
-http://www.opendmarc.org
+About DMARC: http://www.opendmarc.org
 
-Mention other useful documentation such as the documentation of
-related modules or operating system documentation (such as man pages
-in UNIX), or any relevant external documentation such as RFCs or
-standards.
-
-If you have a mailing list set up for your module, mention it here.
-
-If you have a web site set up for your module, mention it here.
+Abount opendmarc and libopendmarc: http://www.trusteddomain.org/opendmarc.html
 
 =head1 AUTHOR
 
@@ -427,6 +419,8 @@ at your option, any later version of Perl 5 you may have available.
 This license is not covering the required libopendmarc package from
 http://www.trusteddomain.org/opendmarc.html. Please refer to appropriate
 license details for the package.
+
+Please try to have the appropriate amount of fun.
 
 
 =cut

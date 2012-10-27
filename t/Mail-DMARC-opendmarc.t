@@ -55,6 +55,7 @@ $result = $obj->store_auth_results(
 is($result, Mail::DMARC::opendmarc::DMARC_PARSE_OKAY, "store_auth_results 1");
 $result = $obj->verify();
 is($result->{policy}, Mail::DMARC::opendmarc::DMARC_POLICY_REJECT, "verify 1");
+is($obj->policy_status_to_str($result->{policy}),'Policy says to reject message', "policy_status_to_str 1");
 $result = $obj->store_auth_results(
 	'mlu.contactlab.it',
 	'mlu.contactlab.it',
@@ -67,6 +68,7 @@ $result = $obj->store_auth_results(
 is($result, Mail::DMARC::opendmarc::DMARC_PARSE_OKAY, "store_auth_results 2");
 $result = $obj->verify();
 is($result->{policy}, Mail::DMARC::opendmarc::DMARC_POLICY_REJECT, "verify 2");
+is($obj->policy_status_to_str($result->{policy}),'Policy says to reject message', "policy_status_to_str 2");
 $result = $obj->store_auth_results(
 	'mlu.contactlab.it',
 	'example.com',
@@ -76,10 +78,14 @@ $result = $obj->store_auth_results(
 	Mail::DMARC::opendmarc::DMARC_POLICY_DKIM_OUTCOME_PASS,
 	'ok'
 );
+like($obj->dump_policy(), qr/SPF_DOMAIN=example\.com/, "dump_policy 1");
+unlike($obj->dump_policy(), qr/DKIM_DOMAIN=example\.com/, "dump_policy 2");
+
 is($result, Mail::DMARC::opendmarc::DMARC_PARSE_OKAY, "store_auth_results 3");
 $result = $obj->verify();
 is($result->{policy}, Mail::DMARC::opendmarc::DMARC_POLICY_PASS, "verify 3");
 is($result->{human_policy}, 'DMARC_POLICY_PASS', "human_policy");
+is($obj->policy_status_to_str($result->{policy}),'Policy OK so accept message', "policy_status_to_str 3");
 
 
 

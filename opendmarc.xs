@@ -213,9 +213,6 @@ opendmarc_policy_check_alignment(subdomain, tld, mode)
 	u_char * tld
 	int mode
 	
-#ifdef HAVE_OPENDMARC_INTERNAL_H
-#include "opendmarc_internal.h"
-
 #typedef struct dmarc_policy_t {
 #	/*
 #	 * Supplied information
@@ -260,27 +257,31 @@ opendmarc_policy_check_alignment(subdomain, tld, mode)
 #	u_char **	ruf_list;
 #} DMARC_POLICY_T;
 
-char *
-to_str(pctx)
+SV *
+opendmarc_policy_to_buf(pctx)
 	DMARC_POLICY_T *pctx
+	INIT:
+		SV *sv;
+		STRLEN len = 1024;
+		char *buf;
 	CODE:
-	
-
-void 
-dump_dmarc_policy_t(pctx)
-	DMARC_POLICY_T *pctx
-	CODE:
-		printf("Dumping DMARC_POLICY_T struct at %p\n\tip_addr: %s\n\tfrom_domain: %s\n\torganizational_domain: %s\n\t"
-"sp: %c\n\tp: %c\n\tpct: %d\n",
-				pctx,
-				pctx->ip_addr,
-				pctx->from_domain,
-				pctx->organizational_domain,
-				pctx->sp,
-				pctx->p,
-				pctx->pct
-		);
-
-#endif
-
+		buf = safemalloc(len);
+		if (buf == NULL)
+				XSRETURN_UNDEF;
+		int ret = opendmarc_policy_to_buf (pctx, buf, len);
+		if (ret == E2BIG) {
+			safefree(buf);
+			/* Try again with 2048 */
+			len = 2048;
+			buf = safemalloc(len);
+			if (buf == NULL)
+				XSRETURN_UNDEF;
+			ret = opendmarc_policy_to_buf (pctx, buf, len);
+		}
+		RETVAL = newSVpvn(buf, len);
+		safefree(buf);
+		if (ret != 0)
+				XSRETURN_UNDEF;
+	OUTPUT:
+		RETVAL
 
