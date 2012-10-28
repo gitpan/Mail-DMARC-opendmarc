@@ -23,6 +23,8 @@ my $wrong_record = 'v=spf1 a -all';
 my $domain = 'dmarc.org';
 # TODO: replace with something sensible
 my $org_domain = 'contactlab.com';
+# TODO: replace with something sensible
+my $no_domain = 'foo.bar.foobar';
 
 
 is(Mail::DMARC::opendmarc::opendmarc_policy_status_to_str(0),'Success. No Errors','status');
@@ -86,6 +88,24 @@ $result = $obj->verify();
 is($result->{policy}, Mail::DMARC::opendmarc::DMARC_POLICY_PASS, "verify 3");
 is($result->{human_policy}, 'DMARC_POLICY_PASS', "human_policy");
 is($obj->policy_status_to_str($result->{policy}),'Policy OK so accept message', "policy_status_to_str 3");
+
+$result = $obj->store_auth_results(
+	$no_domain,
+	'example.com',
+	Mail::DMARC::opendmarc::DMARC_POLICY_SPF_OUTCOME_FAIL,
+	'neutral',
+	'dmarc.org',
+	Mail::DMARC::opendmarc::DMARC_POLICY_DKIM_OUTCOME_PASS,
+	'ok'
+);
+like($obj->dump_policy(), qr/DKIM_DOMAIN=dmarc\.org/, "dump_policy 3");
+unlike($obj->dump_policy(), qr/SPF_DOMAIN=dmarc\.org/, "dump_policy 4");
+
+is($result, Mail::DMARC::opendmarc::DMARC_PARSE_OKAY, "store_auth_results 4");
+$result = $obj->verify();
+is($result->{policy}, Mail::DMARC::opendmarc::DMARC_POLICY_ABSENT, "verify 4");
+is($result->{human_policy}, 'DMARC_POLICY_ABSENT', "human_policy");
+is($obj->policy_status_to_str($result->{policy}),'Policy up to you. No DMARC record found', "policy_status_to_str 4");
 
 
 

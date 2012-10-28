@@ -1,13 +1,24 @@
 Revision history for Perl extension Mail::DMARC::opendmarc.
 
-0.01  Sat Oct  6 16:20:59 2012
-	- original version; created by h2xs 1.23 with options
-		-AO -x -g -n Mail::DMARC::opendmarc opendmarc/extinc/dmarc.h -L~/local/lib -lopendmarc
+0.07  Sun Oct 28 14:31:00 CET 2012
+	- Lowered perl version dependency to 5.12.4 after checking on Gentoo
+	- bug fixes and test cases for POLICY_ABSENT cases	
 
-0.04  Wed Oct 10 23:10:01 2012
-	- whew. Almost there.
-
+0.06  Sat Oct 27 16:26:32 2012
+	- OpenDMARC 1.0.0 released, so check everything still works fine
+	- rewrite dump_policy thanks to msk adding opendmarc_dump_policy_to_buf in libopendmarc (thanks!)
+	- some polishing
 
 0.04_02  Sun Oct 14 15:02:30 2012
 	- nasty object reuse issue cleared
 	- INSTALL, README and pod start making some sense
+
+0.04  Wed Oct 10 23:10:01 2012
+	- whew. Almost there.
+
+0.01  Sat Oct  6 16:20:59 2012
+	- original version; created by h2xs 1.23 with options
+		-AO -x -g -n Mail::DMARC::opendmarc opendmarc/extinc/dmarc.h -L~/local/lib -lopendmarc
+
+
+

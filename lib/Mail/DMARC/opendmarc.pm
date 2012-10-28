@@ -1,12 +1,12 @@
 package Mail::DMARC::opendmarc;
 
-use 5.014002;
+use 5.012004;
 use strict;
 use warnings;
 use Carp;
 #use Switch;
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 our $DEBUG = 0;
 
 require Exporter;
@@ -224,7 +224,7 @@ sub store_auth_results_from_header {
 	return undef;
 }
 
-#TOD
+# TODO
 sub validate {
 	my $self = shift;
 	my $from_address = shift;
@@ -251,7 +251,7 @@ sub store_auth_results {
 	$self->{from_domain} = $from_domain;
 	
 	my $ret = $self->query($from_domain);
-	return $ret unless $ret == DMARC_PARSE_OKAY;
+	return $ret unless ($ret == DMARC_PARSE_OKAY || $ret == DMARC_POLICY_ABSENT || $ret == DMARC_DNS_ERROR_NO_RECORD);
 	
 	$self->{spf} = {
 		'domain' => $spf_domain,
@@ -275,16 +275,19 @@ sub store_auth_results {
 }
 
 our %POLICY_VALUES = (
+		Mail::DMARC::opendmarc::DMARC_POLICY_ABSENT => 'DMARC_POLICY_ABSENT',
 		Mail::DMARC::opendmarc::DMARC_POLICY_NONE => 'DMARC_POLICY_NONE',
 		Mail::DMARC::opendmarc::DMARC_POLICY_PASS => 'DMARC_POLICY_PASS',
 		Mail::DMARC::opendmarc::DMARC_POLICY_QUARANTINE => 'DMARC_POLICY_QUARANTINE',
 		Mail::DMARC::opendmarc::DMARC_POLICY_REJECT => 'DMARC_POLICY_REJECT'
 );
 our %SPF_ALIGNMENT_VALUES = (
+		0 => 'N/A',
 		Mail::DMARC::opendmarc::DMARC_POLICY_SPF_ALIGNMENT_PASS => 'DMARC_POLICY_SPF_ALIGNMENT_PASS',
 		Mail::DMARC::opendmarc::DMARC_POLICY_SPF_ALIGNMENT_FAIL => 'DMARC_POLICY_SPF_ALIGNMENT_FAIL'
 );
 our %DKIM_ALIGNMENT_VALUES = (
+		0 => 'N/A',
 		Mail::DMARC::opendmarc::DMARC_POLICY_DKIM_ALIGNMENT_PASS => 'DMARC_POLICY_DKIM_ALIGNMENT_PASS',	
 		Mail::DMARC::opendmarc::DMARC_POLICY_DKIM_ALIGNMENT_FAIL => 'DMARC_POLICY_DKIM_ALIGNMENT_FAIL'	
 );

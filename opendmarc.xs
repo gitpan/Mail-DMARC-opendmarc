@@ -261,7 +261,6 @@ SV *
 opendmarc_policy_to_buf(pctx)
 	DMARC_POLICY_T *pctx
 	INIT:
-		SV *sv;
 		STRLEN len = 1024;
 		char *buf;
 	CODE:
@@ -278,7 +277,7 @@ opendmarc_policy_to_buf(pctx)
 				XSRETURN_UNDEF;
 			ret = opendmarc_policy_to_buf (pctx, buf, len);
 		}
-		RETVAL = newSVpvn(buf, len);
+		RETVAL = newSVpvn(buf, strlen(buf));
 		safefree(buf);
 		if (ret != 0)
 				XSRETURN_UNDEF;

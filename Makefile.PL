@@ -1,4 +1,4 @@
-use 5.014002;
+use 5.012004;
 use ExtUtils::MakeMaker;
 require ExtUtils::Liblist;
 
