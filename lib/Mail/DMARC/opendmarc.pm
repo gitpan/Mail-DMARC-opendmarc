@@ -6,7 +6,7 @@ use warnings;
 use Carp;
 #use Switch;
 
-our $VERSION = '0.07';
+our $VERSION = '0.08';
 our $DEBUG = 0;
 
 require Exporter;
@@ -83,8 +83,9 @@ Mail::DMARC::opendmarc - Perl extension wrapping OpenDMARC's libopendmarc librar
   my $dmarc = Mail::DMARC::opendmarc->new();
 
   # Get spf and dkim auth results from Authentication-Results (RFC5451) header
-  # Store them into the dmarc object
-  $dmarc->store_auth_results(
+  # Store them into the dmarc object together with from domain and let object
+  # query DNS too
+  $dmarc->query_and_store_auth_results(
         'mlu.contactlab.it',  # From: domain
         'example.com',  # envelope-from domain
         Mail::DMARC::opendmarc::DMARC_POLICY_SPF_OUTCOME_NONE, # SPF check result
@@ -106,6 +107,8 @@ Mail::DMARC::opendmarc - Perl extension wrapping OpenDMARC's libopendmarc librar
   
   # Diagnostic output of internal libopendmarc structure via this handy function:
   print $dmarc->dump_policy() if ($debug);
+  # Use it often. Side-effects on the library's internal structure might
+  # interfere if you're trying to optimize call sequences.
   
   if ($result->{policy} == Mail::DMARC::opendmarc::DMARC_POLICY_PASS)
 		...
@@ -135,6 +138,7 @@ sub new {
 	# TODO add IPv6 support
 	
 	$self->{policy_t} = Mail::DMARC::opendmarc::opendmarc_policy_connect_init($ip_addr,4);
+	$self->{policy_loaded} = undef;
 
 	die "Unable to initialize policy object" unless defined($self->{policy_t});
 	die "Unable to initialize policy object" unless defined($self->{policy_t});
@@ -149,11 +153,20 @@ sub DESTROY {
 	warn "Destructor called for $self" if $DEBUG;
 }
 
-sub policy_status_to_str {
-	my $self = shift;
-	my $status = shift;
+# Accessors
 
-	return Mail::DMARC::opendmarc::opendmarc_policy_status_to_str($status);
+sub policy_loaded {
+	my $self = shift;
+	my $val = shift;
+	return ($self->{policy_loaded} = $val) if (defined($val));
+	return $self->{policy_loaded};
+}
+
+sub valid {
+	my $self = shift;
+	my $val = shift;
+	return ($self->{valid} = $val) if (defined($val));
+	return $self->{valid};
 }
 
 sub policy_t {
@@ -161,16 +174,33 @@ sub policy_t {
 	return $self->{policy_t};
 }
 
+# Utils
+
+sub policy_status_to_str {
+	my $self = shift;
+	my $status = shift;
+
+	return Mail::DMARC::opendmarc::opendmarc_policy_status_to_str($status);
+}
+
 sub dump_policy {
 	my $self = shift;
 	return Mail::DMARC::opendmarc::opendmarc_policy_to_buf($self->policy_t);
 }
 
+# DMARC record parsing and storing
+
 sub query {
 	my $self = shift;
 	my $domain = shift;
 
-	return Mail::DMARC::opendmarc::opendmarc_policy_query_dmarc($self->{policy_t}, $domain);
+	$self->policy_loaded(undef);
+	$self->{policy_t} = Mail::DMARC::opendmarc::opendmarc_policy_connect_rset($self->{policy_t});
+	return Mail::DMARC::opendmarc::DMARC_PARSE_ERROR_NULL_CTX unless defined($self->{policy_t});
+
+	my $ret = Mail::DMARC::opendmarc::opendmarc_policy_query_dmarc($self->{policy_t}, $domain);
+	$self->policy_loaded(1) if ($ret == Mail::DMARC::opendmarc::DMARC_PARSE_OKAY);
+	return $ret;
 }
 
 sub parse {
@@ -178,7 +208,13 @@ sub parse {
 	my $domain = shift;
 	my $record = shift;
 
-	return Mail::DMARC::opendmarc::opendmarc_policy_parse_dmarc($self->{policy_t}, $domain, $record);
+	$self->policy_loaded(undef);
+	$self->{policy_t} = Mail::DMARC::opendmarc::opendmarc_policy_connect_rset($self->{policy_t});
+	return Mail::DMARC::opendmarc::DMARC_PARSE_ERROR_NULL_CTX unless defined($self->{policy_t});
+
+	my $ret = Mail::DMARC::opendmarc::opendmarc_policy_parse_dmarc($self->{policy_t}, $domain, $record);
+	$self->policy_loaded(1) if ($ret == Mail::DMARC::opendmarc::DMARC_PARSE_OKAY);
+	return $ret;
 }
 
 sub store {
@@ -187,7 +223,13 @@ sub store {
 	my $domain = shift;
 	my $organizational_domain = shift;
 
-	return Mail::DMARC::opendmarc::opendmarc_policy_store_dmarc($self->{policy_t}, $record, $domain, $organizational_domain);
+	$self->policy_loaded(undef);
+	$self->{policy_t} = Mail::DMARC::opendmarc::opendmarc_policy_connect_rset($self->{policy_t});
+	return Mail::DMARC::opendmarc::DMARC_PARSE_ERROR_NULL_CTX unless defined($self->{policy_t});
+
+	my $ret = Mail::DMARC::opendmarc::opendmarc_policy_store_dmarc($self->{policy_t}, $record, $domain, $organizational_domain);
+	$self->policy_loaded(1) if ($ret == Mail::DMARC::opendmarc::DMARC_PARSE_OKAY);
+	return $ret;
 }
 
 sub store_from_domain {
@@ -233,6 +275,33 @@ sub validate {
 	return undef;
 }
 
+# Auth-results loader
+
+sub query_and_store_auth_results {
+	my $self = shift;
+	my $from_domain = shift;
+	my $spf_domain = shift;
+	my $spf_result = shift;
+	my $spf_human_result = shift;
+	my $dkim_domain = shift;
+	my $dkim_result = shift;
+	my $dkim_human_result = shift;
+	
+	$self->valid(undef);
+
+	my $ret = $self->query($from_domain);
+	return $ret unless ($ret == DMARC_PARSE_OKAY || $ret == DMARC_POLICY_ABSENT || $ret == DMARC_DNS_ERROR_NO_RECORD);
+	
+	return $self->store_auth_results (
+		$from_domain,
+		$spf_domain,
+		$spf_result,
+		$spf_human_result,
+		$dkim_domain,
+		$dkim_result,
+		$dkim_human_result
+	);
+}
 
 sub store_auth_results {
 	my $self = shift;
@@ -244,15 +313,12 @@ sub store_auth_results {
 	my $dkim_result = shift;
 	my $dkim_human_result = shift;
 
-	$self->{valid} = undef;
-	$self->{policy_t} = Mail::DMARC::opendmarc::opendmarc_policy_connect_rset($self->{policy_t});
-	return Mail::DMARC::opendmarc::DMARC_PARSE_ERROR_NULL_CTX unless defined($self->{policy_t});
-	
+	$self->valid(undef);
+
 	$self->{from_domain} = $from_domain;
-	
-	my $ret = $self->query($from_domain);
-	return $ret unless ($ret == DMARC_PARSE_OKAY || $ret == DMARC_POLICY_ABSENT || $ret == DMARC_DNS_ERROR_NO_RECORD);
-	
+	my $ret = $self->store_from_domain($from_domain);
+	return $ret unless $ret == DMARC_PARSE_OKAY;
+
 	$self->{spf} = {
 		'domain' => $spf_domain,
 		'result' => $spf_result,
@@ -264,12 +330,10 @@ sub store_auth_results {
 		'human' => $dkim_human_result
 	};
 
-	$ret = $self->store_from_domain($from_domain);
-	return $ret unless $ret == DMARC_PARSE_OKAY;
 	$ret = $self->store_spf($spf_domain, $spf_result, DMARC_POLICY_SPF_ORIGIN_MAILFROM, $spf_human_result);
 	return $ret unless $ret == DMARC_PARSE_OKAY;
 	$ret = $self->store_dkim($dkim_domain, $dkim_result, $dkim_human_result);
-	$self->{valid} = 1 if $ret == DMARC_PARSE_OKAY;
+	$self->valid(1) if $ret == DMARC_PARSE_OKAY;
 	return $ret;
 
 }
@@ -292,6 +356,8 @@ our %DKIM_ALIGNMENT_VALUES = (
 		Mail::DMARC::opendmarc::DMARC_POLICY_DKIM_ALIGNMENT_FAIL => 'DMARC_POLICY_DKIM_ALIGNMENT_FAIL'	
 );
 	
+	
+# Main function
 
 sub verify {
 	my $self = shift;

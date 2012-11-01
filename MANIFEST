@@ -10,6 +10,7 @@ typemap
 README
 INSTALL
 t/Mail-DMARC-opendmarc.t
+t/RFC-AppendixB.t
 lib/Mail/DMARC/opendmarc.pm
 lib/Mail/DMARC/opendmarc/Constants/C/ForwardDecls.pm
 lib/Mail/DMARC/opendmarc/Constants/C/Symbols.pm

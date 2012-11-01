@@ -22,3 +22,5 @@ that Perl is be able to find without help.
 In case it isn't kindly tell Makefile.PL where to locate the include and libraries using -L and INC:
 
 perl Makefile.PL LIBS="-Lsomewhere/lib -lopendmarc -lresolv" INC="-Isomewhere/include"
+
+

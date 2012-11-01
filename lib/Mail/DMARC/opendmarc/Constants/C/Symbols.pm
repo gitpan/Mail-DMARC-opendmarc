@@ -6,6 +6,9 @@ use warnings;
 
 use base 'Exporter';
 
+# Should reflect version of the libopendmarc library
+our $VERSION = '1.00';
+
 our @EXPORT = qw( @ALL );
 
 our @ALL = qw(
