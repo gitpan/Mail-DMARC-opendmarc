@@ -1,20 +1,25 @@
 package Mail::DMARC::opendmarc;
 
-use 5.012004;
+use 5.010000;
 use strict;
 use warnings;
 use Carp;
+use File::ShareDir;
 #use Switch;
 
-our $VERSION = '0.08';
 our $DEBUG = 0;
 
 require Exporter;
+use XSLoader;
 
 
 my $_symbols_present = 0;
+my $_tld_file;
 
 BEGIN {
+	
+	our $VERSION = '0.10';
+	
     eval {
 		require Mail::DMARC::opendmarc::Constants::C::Symbols;
 	};
@@ -23,7 +28,26 @@ BEGIN {
     eval {
 		require Mail::DMARC::opendmarc::Constants::C::ForwardDecls;
 	};
+	
+	# Need to load XS here to call library_init function
+	XSLoader::load ('Mail::DMARC::opendmarc', $VERSION);
+
+
+	#print "TLD file is " . File::ShareDir::module_dir('Mail::DMARC::opendmarc') . '/effective_tld_names.dat';
+	$_tld_file = File::ShareDir::dist_dir('Mail-DMARC-opendmarc') . '/effective_tld_names.dat';
+	
+	#print "$INC{'Mail/DMARC/opendmarc'}/effective_tld_names\.dat\n";
+	my $ret = opendmarc_policy_library_init_tld($_tld_file);
+	# TODO somehow let this see the defined constants
+	croak "Failed to initialize libopendmarc: $ret\n" unless ($ret == 0);
+	
 }
+
+END {
+	opendmarc_policy_library_shutdown_tld($_tld_file);
+}
+
+
 
 # Items to export into callers namespace by default. Note: do not export
 # names by default without a very good reason. Use EXPORT_OK instead.
@@ -36,9 +60,9 @@ our %EXPORT_TAGS = ( 'all' => [ qw(
 	
 ) ] );
 
-our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
+#our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 
-our @EXPORT = (
+our @EXPORT_OK = (
 	
                 $_symbols_present ? @Mail::DMARC::opendmarc::Constants::C::Symbols::ALL
                                   : (),
@@ -64,11 +88,9 @@ sub AUTOLOAD {
     }
     goto &$AUTOLOAD;
 }
-require XSLoader;
 
 
-require XSLoader;
-XSLoader::load('Mail::DMARC::opendmarc', $VERSION);
+
 
 # Below is stub documentation for your module. You'd better edit it!
 
@@ -100,8 +122,9 @@ Mail::DMARC::opendmarc - Perl extension wrapping OpenDMARC's libopendmarc librar
   # result is a hashref with the following attributes:
   #		'spf_alignment' 
   #		'dkim_alignment'
-  #		'policy' => 
+  #		'policy'
   #		'human_policy' 
+  #		'utilized_domain'
 
   print "DMARC check result: " . $result->{human_policy} . "\n";
   
@@ -140,7 +163,6 @@ sub new {
 	$self->{policy_t} = Mail::DMARC::opendmarc::opendmarc_policy_connect_init($ip_addr,4);
 	$self->{policy_loaded} = undef;
 
-	die "Unable to initialize policy object" unless defined($self->{policy_t});
 	die "Unable to initialize policy object" unless defined($self->{policy_t});
 	
 	return $self;
@@ -316,7 +338,8 @@ sub store_auth_results {
 	$self->valid(undef);
 
 	$self->{from_domain} = $from_domain;
-	my $ret = $self->store_from_domain($from_domain);
+	my $ret;
+	$ret = $self->store_from_domain($from_domain);
 	return $ret unless $ret == DMARC_PARSE_OKAY;
 
 	$self->{spf} = {
@@ -345,11 +368,13 @@ our %POLICY_VALUES = (
 		Mail::DMARC::opendmarc::DMARC_POLICY_QUARANTINE => 'DMARC_POLICY_QUARANTINE',
 		Mail::DMARC::opendmarc::DMARC_POLICY_REJECT => 'DMARC_POLICY_REJECT'
 );
+
 our %SPF_ALIGNMENT_VALUES = (
 		0 => 'N/A',
 		Mail::DMARC::opendmarc::DMARC_POLICY_SPF_ALIGNMENT_PASS => 'DMARC_POLICY_SPF_ALIGNMENT_PASS',
 		Mail::DMARC::opendmarc::DMARC_POLICY_SPF_ALIGNMENT_FAIL => 'DMARC_POLICY_SPF_ALIGNMENT_FAIL'
 );
+
 our %DKIM_ALIGNMENT_VALUES = (
 		0 => 'N/A',
 		Mail::DMARC::opendmarc::DMARC_POLICY_DKIM_ALIGNMENT_PASS => 'DMARC_POLICY_DKIM_ALIGNMENT_PASS',	
@@ -364,6 +389,7 @@ sub verify {
 
 	return undef unless $self->{valid};	
 	my $result = {
+		'utilized_domain' => undef,
 		'spf_alignment' => undef,
 		'dkim_alignment' => undef,
 		'policy' => undef,
@@ -380,6 +406,7 @@ sub verify {
 	return undef unless $ret == DMARC_PARSE_OKAY;
 	$result->{spf_alignment} = $sa;
 	$result->{dkim_alignment} = $da;
+	$result->{utilized_domain} = Mail::DMARC::opendmarc::opendmarc_policy_fetch_utilized_domain_string($self->{policy_t});
 
 	return $result;
 	
@@ -479,7 +506,7 @@ Davide Migliavacca, E<lt>shari@cpan.orgE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2012 by Davide Migliavacca and ContactLab
+Copyright (C) 2012, 2013 by Davide Migliavacca and ContactLab
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.14.2 or,

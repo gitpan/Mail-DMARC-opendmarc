@@ -19,11 +19,50 @@ PROTOTYPES: ENABLE
 OPENDMARC_STATUS_T  
 opendmarc_policy_library_init(lib_init)
 	OPENDMARC_LIB_T *lib_init
+	
 
+#typedef struct {
+#	int			tld_type;
+#	u_char 			tld_source_file[MAXPATHLEN];
+#	int    			nscount;
+#	struct sockaddr_in 	nsaddr_list[MAXNS];
+#} OPENDMARC_LIB_T;
+
+OPENDMARC_STATUS_T
+opendmarc_policy_library_init_tld(tld_file)
+	const char *tld_file
+	INIT:
+		OPENDMARC_LIB_T lib_t;
+	CODE:
+		(void) memset(&lib_t, '\0', sizeof(OPENDMARC_LIB_T));
+		lib_t.tld_type = OPENDMARC_TLD_TYPE_MOZILLA;
+		strcpy(lib_t.tld_source_file, tld_file);
+		printf("libt.tld_type is %d, lib_t.tld_source_file is '%s'\n", lib_t.tld_type, lib_t.tld_source_file);
+		RETVAL = opendmarc_policy_library_init(&lib_t);
+	OUTPUT:
+		RETVAL
+		
 
 OPENDMARC_STATUS_T  
 opendmarc_policy_library_shutdown(lib_init)
 	OPENDMARC_LIB_T *lib_init
+	
+
+# Notice: opendmarc 1.0.0 does nothing with the lib_t param.
+# We only set it up to avoid future breakage
+OPENDMARC_STATUS_T
+opendmarc_policy_library_shutdown_tld(tld_file)
+	const char *tld_file
+	INIT:
+		OPENDMARC_LIB_T lib_t;
+	CODE:
+		(void) memset(&lib_t, '\0', sizeof(OPENDMARC_LIB_T));
+		lib_t.tld_type = OPENDMARC_TLD_TYPE_MOZILLA;
+		strcpy(lib_t.tld_source_file, tld_file);
+		/* printf("libt.tld_type is %d, lib_t.tld_source_file is '%s'\n", lib_t.tld_type, lib_t.tld_source_file); */
+		RETVAL = opendmarc_policy_library_shutdown(&lib_t);
+	OUTPUT:
+		RETVAL
 
 ## Per-Envelope Context Functions
 DMARC_POLICY_T *
@@ -161,6 +200,21 @@ opendmarc_policy_fetch_ruf(pctx, list_buf, size_of_buf, constant)
 	u_char *list_buf
 	size_t size_of_buf
 	int constant
+	
+OPENDMARC_STATUS_T 
+opendmarc_policy_fetch_fo(pctx, pfo)
+	DMARC_POLICY_T *pctx
+	int &pfo
+	OUTPUT:
+		pfo
+
+OPENDMARC_STATUS_T 
+opendmarc_policy_fetch_rf(pctx, prf)
+	DMARC_POLICY_T *pctx
+	int &prf
+	OUTPUT:
+		prf
+
 
 OPENDMARC_STATUS_T 
 opendmarc_policy_fetch_utilized_domain(pctx, buf, buflen)
@@ -169,6 +223,34 @@ opendmarc_policy_fetch_utilized_domain(pctx, buf, buflen)
 	size_t buflen
 	OUTPUT:
 		buf
+		
+SV *
+opendmarc_policy_fetch_utilized_domain_string(pctx)
+	DMARC_POLICY_T *pctx
+	INIT:
+		STRLEN len = 1024;
+		char *buf;
+	CODE:
+		buf = safemalloc(len);
+		if (buf == NULL)
+				XSRETURN_UNDEF;
+		int ret = opendmarc_policy_fetch_utilized_domain (pctx, buf, len);
+		if (ret == E2BIG) {
+			safefree(buf);
+			/* Try again with 2048 */
+			len = 2048;
+			buf = safemalloc(len);
+			if (buf == NULL)
+				XSRETURN_UNDEF;
+			ret = opendmarc_policy_fetch_utilized_domain (pctx, buf, len);
+		}
+		RETVAL = newSVpvn(buf, strlen(buf));
+		safefree(buf);
+		if (ret != 0)
+				XSRETURN_UNDEF;
+	OUTPUT:
+		RETVAL
+		
 
 ## TLD Functions
 int  		   
@@ -205,6 +287,41 @@ opendmarc_util_clearargv(ary)
 const char *	   
 opendmarc_policy_status_to_str(status)
 	OPENDMARC_STATUS_T status
+
+int
+opendmarc_get_tld(domain, tld, tld_len)
+		u_char *domain
+		u_char *tld
+		size_t tld_len
+
+
+SV *
+opendmarc_get_tld_string(domain)
+		const char *domain
+	INIT:
+		STRLEN len = 1024;
+		char *buf;
+	CODE:
+		buf = safemalloc(len);
+		if (buf == NULL)
+				XSRETURN_UNDEF;
+		int ret = opendmarc_get_tld (domain, buf, len);
+		if (ret == E2BIG) {
+			safefree(buf);
+			/* Try again with 2048 */
+			len = 2048;
+			buf = safemalloc(len);
+			if (buf == NULL)
+				XSRETURN_UNDEF;
+			ret = opendmarc_get_tld (domain, buf, len);
+		}
+		RETVAL = newSVpvn(buf, strlen(buf));
+		safefree(buf);
+		if (ret != 0)
+				XSRETURN_UNDEF;
+	OUTPUT:
+		RETVAL
+
 
 
 int                

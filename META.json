@@ -22,7 +22,7 @@
    "prereqs" : {
       "build" : {
          "requires" : {
-            "ExtUtils::MakeMaker" : 0
+            "File::ShareDir::Install" : 0
          }
       },
       "configure" : {
@@ -31,9 +31,11 @@
          }
       },
       "runtime" : {
-         "requires" : {}
+         "requires" : {
+            "File::ShareDir" : 0
+         }
       }
    },
    "release_status" : "stable",
-   "version" : "0.08"
+   "version" : "0.10"
 }

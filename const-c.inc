@@ -21,6 +21,82 @@ typedef double NV; /* 5.6 and later define NVTYPE, and typedef NV to it.  */
 #endif
 
 static int
+constant_17 (pTHX_ const char *name, IV *iv_return) {
+  /* When generated this function returned values for the list of names given
+     here.  However, subsequent manual editing may have added or removed some.
+     DMARC_POLICY_NONE DMARC_POLICY_PASS DMARC_RECORD_FO_0 DMARC_RECORD_FO_1
+     DMARC_RECORD_FO_D DMARC_RECORD_FO_S */
+  /* Offset 16 gives the best switch position.  */
+  switch (name[16]) {
+  case '0':
+    if (memEQ(name, "DMARC_RECORD_FO_", 16)) {
+    /*                               0      */
+#ifdef DMARC_RECORD_FO_0
+      *iv_return = DMARC_RECORD_FO_0;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case '1':
+    if (memEQ(name, "DMARC_RECORD_FO_", 16)) {
+    /*                               1      */
+#ifdef DMARC_RECORD_FO_1
+      *iv_return = DMARC_RECORD_FO_1;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'D':
+    if (memEQ(name, "DMARC_RECORD_FO_", 16)) {
+    /*                               D      */
+#ifdef DMARC_RECORD_FO_D
+      *iv_return = DMARC_RECORD_FO_D;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'E':
+    if (memEQ(name, "DMARC_POLICY_NON", 16)) {
+    /*                               E      */
+#ifdef DMARC_POLICY_NONE
+      *iv_return = DMARC_POLICY_NONE;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  case 'S':
+    if (memEQ(name, "DMARC_POLICY_PAS", 16)) {
+    /*                               S      */
+#ifdef DMARC_POLICY_PASS
+      *iv_return = DMARC_POLICY_PASS;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    if (memEQ(name, "DMARC_RECORD_FO_", 16)) {
+    /*                               S      */
+#ifdef DMARC_RECORD_FO_S
+      *iv_return = DMARC_RECORD_FO_S;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
+    break;
+  }
+  return PERL_constant_NOTFOUND;
+}
+
+static int
 constant_19 (pTHX_ const char *name, IV *iv_return) {
   /* When generated this function returned values for the list of names given
      here.  However, subsequent manual editing may have added or removed some.
@@ -348,10 +424,19 @@ constant_27 (pTHX_ const char *name, IV *iv_return) {
   /* When generated this function returned values for the list of names given
      here.  However, subsequent manual editing may have added or removed some.
      DMARC_PARSE_ERROR_BAD_VALUE DMARC_PARSE_ERROR_NO_DOMAIN
-     DMARC_RECORD_RF_UNSPECIFIED */
+     DMARC_RECORD_FO_UNSPECIFIED DMARC_RECORD_RF_UNSPECIFIED */
   /* Offset 26 gives the best switch position.  */
   switch (name[26]) {
   case 'D':
+    if (memEQ(name, "DMARC_RECORD_FO_UNSPECIFIE", 26)) {
+    /*                                         D      */
+#ifdef DMARC_RECORD_FO_UNSPECIFIED
+      *iv_return = DMARC_RECORD_FO_UNSPECIFIED;
+      return PERL_constant_ISIV;
+#else
+      return PERL_constant_NOTDEF;
+#endif
+    }
     if (memEQ(name, "DMARC_RECORD_RF_UNSPECIFIE", 26)) {
     /*                                         D      */
 #ifdef DMARC_RECORD_RF_UNSPECIFIED
@@ -647,12 +732,13 @@ my @names = (qw(DMARC_DNS_ERROR_NO_RECORD DMARC_DNS_ERROR_NXDOMAIN
 	       DMARC_POLICY_SPF_OUTCOME_FAIL DMARC_POLICY_SPF_OUTCOME_NONE
 	       DMARC_POLICY_SPF_OUTCOME_PASS DMARC_POLICY_SPF_OUTCOME_TMPFAIL
 	       DMARC_RECORD_A_RELAXED DMARC_RECORD_A_STRICT
-	       DMARC_RECORD_A_UNSPECIFIED DMARC_RECORD_P_NONE
-	       DMARC_RECORD_P_QUARANTINE DMARC_RECORD_P_REJECT
-	       DMARC_RECORD_P_UNSPECIFIED DMARC_RECORD_RF_AFRF
-	       DMARC_RECORD_RF_IODEF DMARC_RECORD_RF_UNSPECIFIED
-	       DMARC_TLD_ERROR_UNKNOWN MAXNS MAXPATHLEN OPENDMARC_LIB_VERSION
-	       OPENDMARC_MAX_NSADDRLIST 
+	       DMARC_RECORD_A_UNSPECIFIED DMARC_RECORD_FO_0 DMARC_RECORD_FO_1
+	       DMARC_RECORD_FO_D DMARC_RECORD_FO_S DMARC_RECORD_FO_UNSPECIFIED
+	       DMARC_RECORD_P_NONE DMARC_RECORD_P_QUARANTINE
+	       DMARC_RECORD_P_REJECT DMARC_RECORD_P_UNSPECIFIED
+	       DMARC_RECORD_RF_AFRF DMARC_RECORD_RF_IODEF
+	       DMARC_RECORD_RF_UNSPECIFIED DMARC_TLD_ERROR_UNKNOWN MAXNS
+	       MAXPATHLEN OPENDMARC_LIB_VERSION OPENDMARC_MAX_NSADDRLIST
 	       OPENDMARC_TLD_TYPE_MOZILLA OPENDMARC_TLD_TYPE_NONE));
 
 print constant_types(), "\n"; # macro defs
@@ -696,33 +782,7 @@ __END__
     }
     break;
   case 17:
-    /* Names all of length 17.  */
-    /* DMARC_POLICY_NONE DMARC_POLICY_PASS */
-    /* Offset 13 gives the best switch position.  */
-    switch (name[13]) {
-    case 'N':
-      if (memEQ(name, "DMARC_POLICY_NONE", 17)) {
-      /*                            ^          */
-#ifdef DMARC_POLICY_NONE
-        *iv_return = DMARC_POLICY_NONE;
-        return PERL_constant_ISIV;
-#else
-        return PERL_constant_NOTDEF;
-#endif
-      }
-      break;
-    case 'P':
-      if (memEQ(name, "DMARC_POLICY_PASS", 17)) {
-      /*                            ^          */
-#ifdef DMARC_POLICY_PASS
-        *iv_return = DMARC_POLICY_PASS;
-        return PERL_constant_ISIV;
-#else
-        return PERL_constant_NOTDEF;
-#endif
-      }
-      break;
-    }
+    return constant_17 (aTHX_ name, iv_return);
     break;
   case 19:
     return constant_19 (aTHX_ name, iv_return);

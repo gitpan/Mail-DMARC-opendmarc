@@ -1,6 +1,10 @@
-use 5.012004;
+use 5.010000;
 use ExtUtils::MakeMaker;
+use File::ShareDir::Install;
+
 require ExtUtils::Liblist;
+
+install_share 'share';
 
 
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence
@@ -8,11 +12,16 @@ require ExtUtils::Liblist;
 WriteMakefile(
     NAME              => 'Mail::DMARC::opendmarc',
     VERSION_FROM      => 'lib/Mail/DMARC/opendmarc.pm', # finds $VERSION
-    PREREQ_PM         => {}, # e.g., Module::Name => 1.1
+    BUILD_REQUIRES	  => {
+				'File::ShareDir::Install' => 0
+				},
+    PREREQ_PM         => {
+				'File::ShareDir' => 0
+				}, # e.g., Module::Name => 1.1
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
       (ABSTRACT_FROM  => 'lib/Mail/DMARC/opendmarc.pm', # retrieve abstract from module
        AUTHOR         => 'Davide Migliavacca <shari@cpan.org>') : ()),
-    LIBS              => ['-lresolv'], # e.g., '-lm'
+    LIBS              => ['-lresolv -lopendmarc'], # e.g., '-lm'
     DEFINE            => '', # e.g., '-DHAVE_SOMETHING'
     INC               => '-I', # e.g., '-I. -I/usr/include/other'
 	TYPEMAPS		  => ['typemap'],
@@ -23,3 +32,7 @@ WriteMakefile(
 				license =>  ['artistic_2']
 				}
 );
+
+package MY;
+use File::ShareDir::Install qw(postamble);
+

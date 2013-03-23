@@ -3,7 +3,7 @@ abstract: "Perl extension wrapping OpenDMARC's libopendmarc library"
 author:
   - 'Davide Migliavacca <shari@cpan.org>'
 build_requires:
-  ExtUtils::MakeMaker: 0
+  File::ShareDir::Install: 0
 configure_requires:
   ExtUtils::MakeMaker: 0
 dynamic_config: 1
@@ -17,5 +17,6 @@ no_index:
   directory:
     - t
     - inc
-requires: {}
-version: 0.08
+requires:
+  File::ShareDir: 0
+version: 0.10
