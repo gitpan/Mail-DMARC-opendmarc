@@ -18,7 +18,7 @@ my $_tld_file;
 
 BEGIN {
 	
-	our $VERSION = '0.10';
+	our $VERSION = '0.11';
 	
     eval {
 		require Mail::DMARC::opendmarc::Constants::C::Symbols;
@@ -127,6 +127,8 @@ Mail::DMARC::opendmarc - Perl extension wrapping OpenDMARC's libopendmarc librar
   #		'utilized_domain'
 
   print "DMARC check result: " . $result->{human_policy} . "\n";
+  print "DMARC domain used for policy evaluation: " . $result->{utilized_domain} . "\n";
+  (warning: utilized_domain is only reliable if you have libopendmarc 1.1.3+)
   
   # Diagnostic output of internal libopendmarc structure via this handy function:
   print $dmarc->dump_policy() if ($debug);
@@ -143,13 +145,19 @@ Please refer to http://www.trusteddomain.org/opendmarc.html for more information
 
 Look into the test suite for more usage examples.
 
-=cut
+=head2 METHODS
 
-#use vars;
-#our $names = {
-#	'spf_pass' => DMARC_POLICY_SPF_OUTCOME_PASS,
-#	DMARC_POLICY_SPF_OUTCOME_PASS => 'spf_pass'
-#};
+=head3 Basic housekeeping
+
+=item new
+
+	# $dmarc will hold a reference to a Mail::DMARC::opendmarc instance
+	my $dmarc = Mail::DMARC::opendmarc->new();
+	
+Initializes a new object to interact with libopendmarc
+
+
+=cut
 
 sub new {
 	my $class = shift;
@@ -167,6 +175,12 @@ sub new {
 	
 	return $self;
 }
+
+=item DESTROY
+
+Performs libopendmarc cleanup when objects goes out of scope. Automatically invoked by Perl as needed.
+
+=cut
 
 sub DESTROY {
 	my $self = shift;
@@ -196,7 +210,18 @@ sub policy_t {
 	return $self->{policy_t};
 }
 
-# Utils
+=head3 Utility methods
+
+
+=item policy_status_to_str
+
+Wraps: opendmarc_policy_status_to_str.
+Returns a human-readable string for libopendmarc status codes (OPENDMARC_STATUS_T)
+
+	# Will print "Success. No errors"
+	print $dmarc->policy_status_to_str(0);
+
+=cut
 
 sub policy_status_to_str {
 	my $self = shift;
@@ -205,12 +230,31 @@ sub policy_status_to_str {
 	return Mail::DMARC::opendmarc::opendmarc_policy_status_to_str($status);
 }
 
+=item dump_policy
+
+Wraps opendmarc_policy_to_buf.
+Dumps the values of libopendmarc's DMARC_POLICY_T opaque struct, the per-message library context.
+Useful for debugging and learning DMARC.
+
+=cut
+
+
 sub dump_policy {
 	my $self = shift;
 	return Mail::DMARC::opendmarc::opendmarc_policy_to_buf($self->policy_t);
 }
 
-# DMARC record parsing and storing
+=head3 DMARC policy retrieval / parsing
+
+=item query
+
+Performs a DNS lookup for $domain's DMARC policy.
+Initializes the object's internal structure for later handling.
+Returns a status code (0 is success - see policy_status_to_str)
+
+	my $rcode = $dmarc->query('example.com');
+
+=cut
 
 sub query {
 	my $self = shift;
@@ -225,19 +269,19 @@ sub query {
 	return $ret;
 }
 
-sub parse {
-	my $self = shift;
-	my $domain = shift;
-	my $record = shift;
+=item store
 
-	$self->policy_loaded(undef);
-	$self->{policy_t} = Mail::DMARC::opendmarc::opendmarc_policy_connect_rset($self->{policy_t});
-	return Mail::DMARC::opendmarc::DMARC_PARSE_ERROR_NULL_CTX unless defined($self->{policy_t});
+Wraps: opendmarc_policy_store_dmarc
+Stores a DMARC policy and initializes the object's internal structure for later handling.
+Doesn't perform DNS queries to retrieve the DMARC policy - you pass the domain, policy record
+and organization domain to store (and parse).
+Returns a status code (0 is success - see policy_status_to_str)
 
-	my $ret = Mail::DMARC::opendmarc::opendmarc_policy_parse_dmarc($self->{policy_t}, $domain, $record);
-	$self->policy_loaded(1) if ($ret == Mail::DMARC::opendmarc::DMARC_PARSE_OKAY);
-	return $ret;
-}
+	my $rcode = $dmarc->store($dmarc_policy_record, $domain, $organizational_domain);
+	my $rcode = $dmarc->store('v=DMARC1;p=none','mail.example.com','example.com');
+
+=cut
+
 
 sub store {
 	my $self = shift;
@@ -254,12 +298,70 @@ sub store {
 	return $ret;
 }
 
+=item parse
+
+Wraps: opendmarc_policy_parse_dmarc
+Parses a DMARC policy and initializes the object's internal structure for later handling.
+Doesn't perform DNS queries to retrieve the DMARC policy - you pass the policy to parse.
+You should use store() instead of parse().
+Returns a status code (0 is success - see policy_status_to_str)
+
+	my $rcode = $dmarc->parse($domain, $dmarc_policy_record);
+	my $rcode = $dmarc->parse('example.com', 'v=DMARC1;p=none");
+
+=cut
+
+sub parse {
+	my $self = shift;
+	my $domain = shift;
+	my $record = shift;
+
+	$self->policy_loaded(undef);
+	$self->{policy_t} = Mail::DMARC::opendmarc::opendmarc_policy_connect_rset($self->{policy_t});
+	return Mail::DMARC::opendmarc::DMARC_PARSE_ERROR_NULL_CTX unless defined($self->{policy_t});
+
+	my $ret = Mail::DMARC::opendmarc::opendmarc_policy_parse_dmarc($self->{policy_t}, $domain, $record);
+	$self->policy_loaded(1) if ($ret == Mail::DMARC::opendmarc::DMARC_PARSE_OKAY);
+	return $ret;
+}
+
+=head3 Information storage methods
+
+
+=item store_from_domain
+
+Wraps: opendmarc_policy_store_from_domain
+Tell the policy evaluator the From domain of the message to be evaluated
+
+	my $rcode = $dmarc->store_from_domain($domain);
+	my $rcode = $dmarc->store_from_domain('example.com');
+
+=cut
+
 sub store_from_domain {
 	my $self = shift;
 	my $from_domain = shift;
 
 	return Mail::DMARC::opendmarc::opendmarc_policy_store_from_domain($self->{policy_t}, $from_domain);
 }
+
+=item store_dkim
+
+Wraps: opendmarc_policy_store_dkim
+Tell the policy evaluator the domain DKIM-signing the message and
+the result of the DKIM signature verification.
+	my $rcode = $dmarc->store_dkim($domain, $result, $human_result);
+	my $rcode = $dmarc->store_dkim('example.com', Mail::DMARC::opendmarc::DMARC_POLIY_DKIM_OUTCOME_PASS, 'DKIM pass');
+	
+The following symbols are available for result mapping:
+	Mail::DMARC::opendmarc::DMARC_POLICY_DKIM_OUTCOME_FAIL
+	Mail::DMARC::opendmarc::DMARC_POLICY_DKIM_OUTCOME_PASS
+	Mail::DMARC::opendmarc::DMARC_POLICY_DKIM_OUTCOME_TMPFAIL
+	Mail::DMARC::opendmarc::DMARC_POLICY_DKIM_OUTCOME_NONE
+
+
+
+=cut
 
 sub store_dkim {
 	my $self = shift;
@@ -269,6 +371,29 @@ sub store_dkim {
 
 	return Mail::DMARC::opendmarc::opendmarc_policy_store_dkim($self->{policy_t}, $domain, $result, $human_result);
 }
+
+=item store_spf
+
+Wraps: opendmarc_policy_store_spf
+Tell the policy evaluator the domain DKIM-signing the message and
+the result of the DKIM signature verification.
+
+	my $rcode = $dmarc->store_spf($domain, $result, $origin, $human_result);
+	my $rcode = $dmarc->store_spf('example.com', 
+		Mail::DMARC::opendmarc::DMARC_POLIY_SPF_OUTCOME_PASS, 
+		Mail::DMARC::opendmarc::DMARC_POLIY_SPF_ORIGIN_MAILFROM,
+		'SPF passed');
+
+The following symbols are available for result mapping:
+	Mail::DMARC::opendmarc::DMARC_POLICY_SPF_OUTCOME_FAIL
+	Mail::DMARC::opendmarc::DMARC_POLICY_SPF_OUTCOME_PASS
+	Mail::DMARC::opendmarc::DMARC_POLICY_SPF_OUTCOME_TMPFAIL
+	Mail::DMARC::opendmarc::DMARC_POLICY_SPF_OUTCOME_NONE
+The following symbols are available for SPF origin mapping:
+	Mail::DMARC::opendmarc::DMARC_POLICY_SPF_ORIGIN_MAILFROM
+	Mail::DMARC::opendmarc::DMARC_POLICY_SPF_ORIGIN_HELO
+=cut
+
 
 sub store_spf {
 	my $self = shift;
@@ -281,6 +406,7 @@ sub store_spf {
 }
 
 # TODO
+# Parse a Authentication-Results header and invoke store_from_domain, store_dkim and store_spf appropriately
 sub store_auth_results_from_header {
 	my $self = shift;
 	my $rfc5451_header = shift;
@@ -297,7 +423,25 @@ sub validate {
 	return undef;
 }
 
-# Auth-results loader
+=head3 Do-it-all-at-once convenience methods
+
+=item query_and_store_auth_results
+
+Perform DMARC policy retrieval *and* store authentication results for the current message
+at the same time. Implies SPF authentication is performed against "mail from" and not "helo".
+Returns a status code.
+
+	my $rcode = $dmarc->query_and_store_auth_results(
+		$from_domain,
+		$spf_domain,
+		$spf_result,
+		$spf_human_result,
+		$dkim_domain,
+		$dkim_result,
+		$dkim_human_result);
+
+
+=cut
 
 sub query_and_store_auth_results {
 	my $self = shift;
@@ -324,6 +468,26 @@ sub query_and_store_auth_results {
 		$dkim_human_result
 	);
 }
+
+
+=item store_auth_results
+
+Like query_and_store_results but does not perform a DMARC policy retrieval - use "store" to initialize the DMARC 
+policy instead.
+Implies SPF authentication is performed against "mail from" and not "helo".
+Returns a status code.
+
+	my $rcode = $dmarc->store_auth_results(
+		$from_domain,
+		$spf_domain,
+		$spf_result,
+		$spf_human_result,
+		$dkim_domain,
+		$dkim_result,
+		$dkim_human_result);
+
+
+=cut
 
 sub store_auth_results {
 	my $self = shift;
@@ -384,6 +548,37 @@ our %DKIM_ALIGNMENT_VALUES = (
 	
 # Main function
 
+=head3 DMARC evaluation result methods
+
+=item verify
+
+Process the incoming message context information against the DMARC policy.
+Returns a hash with the following keys:
+
+	'utilized_domain': the domain the policy comes from; either the from_domain or the organizational domain
+	'spf_alignment': result of the DMARC SPF alignment check. Possible values:
+		Mail::DMARC::opendmarc::DMARC_POLICY_SPF_ALIGNMENT_PASS 
+		Mail::DMARC::opendmarc::DMARC_POLICY_SPF_ALIGNMENT_FAIL
+	'dkim_alignment': result of the DMARC DKIM alignment check: Possible values:
+		Mail::DMARC::opendmarc::DMARC_POLICY_DKIM_ALIGNMENT_PASS 
+		Mail::DMARC::opendmarc::DMARC_POLICY_DKIM_ALIGNMENT_FAIL
+	'policy': the recommended policy to apply to the current message
+		Mail::DMARC::opendmarc::DMARC_POLICY_ABSENT 
+		Mail::DMARC::opendmarc::DMARC_POLICY_NONE 
+		Mail::DMARC::opendmarc::DMARC_POLICY_PASS 
+		Mail::DMARC::opendmarc::DMARC_POLICY_QUARANTINE 
+		Mail::DMARC::opendmarc::DMARC_POLICY_REJECT
+	'human_policy': human-readable description of the policy
+	
+	$dmarc->query_and_store_auth_results(...);
+	my $result = $dmarc->verify();
+	print "What should we do with this message: " . $result->{human_policy} . "\n";
+	if ($result->{policy} == Mail::DMARC::opendmarc::DMARC_POLICY_REJECT) {
+		# processing for messages who failed the DMARC check...
+
+
+=cut
+
 sub verify {
 	my $self = shift;
 
@@ -433,30 +628,15 @@ sub human_dkim_alignment {
 	return 'Invalid';
 }
 
+=item get_policy_to_enforce
 
-
-=head2 get_policy_to_enforce()
-
-=begin text
-
-/**************************************************************************
-** OPENDMARC_GET_POLICY_TO_ENFORCE -- What to do with this message. i.e. allow
-**				possible delivery, quarantine, or reject.
-**	Parameters:
-**		pctx	-- A Policy context
-**	Returns:
-**		DMARC_PARSE_ERROR_NULL_CTX	-- pctx == NULL
-**		DMARC_POLICY_ABSENT		-- No DMARC record found
-**		DMARC_FROM_DOMAIN_ABSENT	-- No From: domain
-**		DMARC_POLICY_NONE		-- Accept if other policy allows
-**		DMARC_POLICY_REJECT		-- Policy advises to reject the message
-**		DMARC_POLICY_QUARANTINE		-- Policy advises to quarantine the message
-**		DMARC_POLICY_PASS		-- Policy advises to accept the message
-**	Side Effects:
-**		Checks for domain alignment.
-***************************************************************************/
-
-=end text
+Get the result of the policy evaluation.
+Returns one of:
+		Mail::DMARC::opendmarc::DMARC_POLICY_ABSENT 
+		Mail::DMARC::opendmarc::DMARC_POLICY_NONE 
+		Mail::DMARC::opendmarc::DMARC_POLICY_PASS 
+		Mail::DMARC::opendmarc::DMARC_POLICY_QUARANTINE 
+		Mail::DMARC::opendmarc::DMARC_POLICY_REJECT
 
 =cut
 
@@ -465,6 +645,43 @@ sub get_policy_to_enforce {
 
 	return Mail::DMARC::opendmarc::opendmarc_get_policy_to_enforce($self->{policy_t});
 }
+
+our %FO_VALUES = (
+		Mail::DMARC::opendmarc::DMARC_RECORD_FO_UNSPECIFIED => 'N/A',
+		Mail::DMARC::opendmarc::DMARC_RECORD_FO_0 => '0',
+		Mail::DMARC::opendmarc::DMARC_RECORD_FO_1 => '1',
+		Mail::DMARC::opendmarc::DMARC_RECORD_FO_D => 'd',
+		Mail::DMARC::opendmarc::DMARC_RECORD_FO_S => 's'
+);
+
+our %RF_VALUES = (
+		Mail::DMARC::opendmarc::DMARC_RECORD_RF_UNSPECIFIED => 'N/A',
+		Mail::DMARC::opendmarc::DMARC_RECORD_RF_AFRF => 'afrf',
+		Mail::DMARC::opendmarc::DMARC_RECORD_RF_IODEF => 'iodef'
+);
+
+
+=item get_policy
+
+Returns a hash containing individual elements of the policy after parsing.
+
+	'policy': same as get_policy_to_enforce (for a given message)
+	'p'
+	'sp'
+	'pct'
+	'adkim'
+	'aspf'
+	'spf_aligment'
+	'dkim_aligment'
+	'fo'
+	'rf'
+	'ruf' NOT IMPLENTED YET
+	'rua' NOT IMPLEMENTED YET
+	
+Please refer to DMARC specs for an explanation of the hash elements and their meaning.
+
+=cut
+
 
 sub get_policy {
 	my $self = shift;
@@ -483,6 +700,10 @@ sub get_policy {
 	$result->{adkim} = ($ret == Mail::DMARC::opendmarc::DMARC_PARSE_OKAY && $i > 0 ? chr($i) : undef);
 	$ret = Mail::DMARC::opendmarc::opendmarc_policy_fetch_aspf($self->{policy_t}, $i);
 	$result->{aspf} = ($ret == Mail::DMARC::opendmarc::DMARC_PARSE_OKAY && $i > 0 ? chr($i) : undef);
+	$ret = Mail::DMARC::opendmarc::opendmarc_policy_fetch_fo($self->{policy_t}, $i);
+	$result->{fo} = ($ret == Mail::DMARC::opendmarc::DMARC_PARSE_OKAY && $i > 0 ? chr($i) : undef);
+	$ret = Mail::DMARC::opendmarc::opendmarc_policy_fetch_rf($self->{policy_t}, $i);
+	$result->{rf} = ($ret == Mail::DMARC::opendmarc::DMARC_PARSE_OKAY && $i > 0 ? chr($i) : undef);
 	my $k = 0;
 	$ret = Mail::DMARC::opendmarc::opendmarc_policy_fetch_alignment($self->{policy_t}, $i, $k);
 	$result->{spf_alignment} = $i;
@@ -516,8 +737,11 @@ This license is not covering the required libopendmarc package from
 http://www.trusteddomain.org/opendmarc.html. Please refer to appropriate
 license details for the package.
 
-Please try to have the appropriate amount of fun.
+THis license is not covering the bundled "effective TLD list file"
+from http://mxr.mozilla.org, which is licensed under the 
+Mozilla Public License 2.0
 
+Please try to have the appropriate amount of fun.
 
 =cut
 

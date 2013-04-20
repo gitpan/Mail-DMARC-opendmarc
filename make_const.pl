@@ -1,6 +1,10 @@
 # Note from author (SHARI)
 # You will only need this if you are modifying the module,
 # specifically to upgrade to a newer libopendmarc version
+# After you build the lib/Mail/DMARC/opendmarc/Constants/C/Symbols.pm, 
+# edit the file and add a $VERSION (align it to the module's version)
+# to make sure the CPAN indexer doesn't get confused.
+# e.g.      our $VERSION = '0.11';
 # Read through the code and adjust as and if needed.
 
   use C::Scan::Constants;
@@ -13,7 +17,7 @@
   ## Slurp a list of constant information from C headers
   my @constants = extract_constants_from( @hdr_files );
 
-  ## Version specific workaround - libopendmarc 1.1.1
+  ## Version specific workaround - libopendmarc 1.1.1 and possiblity later
   ## the #define OPENDMARC_STATUS_T int in dmarc.h
   ## confuses C::Scan::Constants which will try to create
   ## a constant definition for 'int' and cause C compiler to fail.

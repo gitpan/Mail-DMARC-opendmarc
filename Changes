@@ -1,5 +1,11 @@
 Revision history for Perl extension Mail::DMARC::opendmarc.
 
+0.11  Sat Apr 20 14:30:00 CEST 2013
+	- Make sure we build with libopendmarc 1.1.2 (now available in Ubuntu 12) and 1.1.3
+	- Added test for utilized_domain since 1.1.3 fixes its behaviour
+	- added documentation for (most) methods
+	- TLD list update
+
 0.10  Sat Mar 23 13:30:00 CET 2013
 	- Aligned to libopendmarc 1.1.1
 	- added policy_fetch_fo and policy_fetch_rf wrappers (not used in module)

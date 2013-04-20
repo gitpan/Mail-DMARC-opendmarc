@@ -6,6 +6,7 @@ use warnings;
 
 use base 'Exporter';
 
+our $VERSION = '0.11';
 our @EXPORT = qw( @ALL );
 
 our @ALL = qw(

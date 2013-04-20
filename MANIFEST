@@ -16,5 +16,4 @@ share/effective_tld_names.dat
 lib/Mail/DMARC/opendmarc.pm
 lib/Mail/DMARC/opendmarc/Constants/C/ForwardDecls.pm
 lib/Mail/DMARC/opendmarc/Constants/C/Symbols.pm
-META.yml                                 Module YAML meta-data (added by MakeMaker)
-META.json                                Module JSON meta-data (added by MakeMaker)
+META.yml                                 Module meta-data (added by MakeMaker)

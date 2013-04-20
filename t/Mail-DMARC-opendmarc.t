@@ -127,15 +127,13 @@ is($result->{policy}, Mail::DMARC::opendmarc::DMARC_POLICY_PASS, "verify 5");
 is($result->{human_policy}, 'DMARC_POLICY_PASS', "human_policy");
 is($obj->policy_status_to_str($result->{policy}),'Policy OK so accept message', "policy_status_to_str 5");
 
+TODO: {
+	local $TODO = "This test will fail if you have libopendmarc version <= 1.1.2";
+# See https://sourceforge.net/p/opendmarc/tickets/47/
+	is($result->{utilized_domain}, 'contactlab.it', 'utilized_domain 1');
+}
 
 
 #$obj->dump_policy;
-
-
-
-
-
-
-
 
 done_testing();
